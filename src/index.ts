@@ -3,7 +3,11 @@ import { ApiClient } from "@twurple/api";
 import { promises as fs } from "fs";
 import { request } from "undici";
 import OBSWebSocket from "obs-websocket-js";
-import { clientId, clientSecret, obsHost, obsPassword, obsSceneName } from "../config.json";
+import {
+    clientId, clientSecret,
+    obsHost, obsPassword, obsSceneName,
+    showGame, separateGame // cope about this formatting :trolley:
+} from "../config.json";
 import tokens from "../tokens.json";
 import { PubSubClient } from "@twurple/pubsub";
 
@@ -24,7 +28,7 @@ async function start() {
     obs.once('Identified', () => console.log("Connected to OBS"));
     obs.once('ConnectionError', (err) => {
         console.log("Connection to OBS failed", err);
-        stop();
+        stop(1);
     })
     obs.once('ConnectionClosed', () => {
         console.log("Connection to OBS lost");
@@ -48,9 +52,10 @@ async function start() {
     let isRaiding = false;
 
     await ws.onModAction(userId, userId, async (ma) => {
-        console.log(ma.action, ma.args, ma.type)
+        console.log('Mod action received:', ma.action, ma.args, ma.type)
         if (ma.type != "chat_channel_moderation") return;
         if (ma.action == "unraid") {
+            console.log("Raid cancelled")
             isRaiding = false;
         }
         if (ma.action != "raid" || isRaiding) return;
@@ -62,25 +67,38 @@ async function start() {
         if (raiding == null) return;
         let rStream = await raiding.getStream()
 
-        await fs.writeFile('./raiding.txt', `${raiding.displayName ?? raiding.name} ${rStream ? `playing ${rStream.gameName}` : ""}`, 'utf8')
+        let raidName = raiding.displayName ?? raiding.name
+        let raidGame = ""
+        if (showGame) {
+            if (separateGame) raidGame = rStream ? rStream.gameName : ""
+            else raidName += ` ${rStream ? `playing ${rStream.gameName}` : ""}`
+        }
+
+        await fs.writeFile('./raid.txt', raidName, 'utf8')
+        await fs.writeFile('./raid_game.txt', raidGame, 'utf8')
         let rPfp = await request(raiding.profilePictureUrl).then(r => r.body.arrayBuffer());
-        await fs.writeFile('./raiding_pfp.png', Buffer.from(rPfp), 'utf8');
+        await fs.writeFile('./raid_pfp.png', Buffer.from(rPfp), 'utf8');
 
         await switchScenes();
     });
 
 
-    function stop() {
+    function stop(code = 0) {
         console.log("Shutting down and exiting");
         obs.disconnect();
-        process.exit();
+        process.exit(code);
     }
 }
 
 async function switchScenes() {
+    await delay(2000)
     console.log("Switching scenes")
     let currentScene = await obs.call("GetCurrentProgramScene");
     if (currentScene.currentProgramSceneName === obsSceneName) return;
     await obs.call("SetCurrentProgramScene", { sceneName: obsSceneName })
+}
+
+function delay(time) {
+    return new Promise(resolve => setTimeout(resolve, time));
 }
 start();

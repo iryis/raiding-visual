@@ -1,7 +1,8 @@
 node_modules
-raiding_pfp.jpg
-raiding_pfp.png
-raiding.txt
+raid_pfp.jpg
+raid_pfp.png
+raid_game.txt
+raid.txt
 config.json
 tokens.json
 start.bat
