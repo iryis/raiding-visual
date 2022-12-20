@@ -7,6 +7,8 @@ What it does briefly:
 - Listens for a "raid" channel moderation event (yes it works with the dashboard button i checked)
 - Triggers a scene change in OBS when a raid starts
 
+Btw, you can setup the scene however you want, this program just spits out 1-2 text files and a png of the raidee's stream info (name, profile img, category)
+
 why did i make this? quit asking youve asked me every time i make a new repo reeeeeeeeeeeeeee 1984
 
 It does not handle your authentication (lazy, maybe later), you'll have to get and input those yourself into `config.json` and/or `tokens.json`. Google it if you're confused
