@@ -20,16 +20,25 @@ Config:
     "clientSecret": "",
     "obsHost": "ws://127.0.0.1:4455",
     "obsPassword": "password",
-    "obsSceneName": "Raiding for example"
+    "obsSceneName": "Raiding for example",
+	"showGame": true,
+	"separateGame": false,
+    "nested": false
 }
 ```
+If you use nested, make sure you put the source name in obsSceneName instead
 
 Tokens:
 ```json
 {
     "accessToken": "",
     "refreshToken": "",
-    "expiresIn": 0,
-    "obtainmentTimestamp": 0
+    "scope": [
+        "channel:moderate",
+        "chat:edit",
+        "chat:read"
+    ],
+    "expiresIn": 15615,
+    "obtainmentTimestamp": 1672345060778
 }
 ```

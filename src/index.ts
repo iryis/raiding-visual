@@ -5,13 +5,17 @@ import { request } from "undici";
 import OBSWebSocket from "obs-websocket-js";
 import {
     clientId, clientSecret,
-    obsHost, obsPassword, obsSceneName,
-    showGame, separateGame // cope about this formatting :trolley:
+    obsHost, obsPassword,
+    obsSceneName, showGame,
+    separateGame, nested // cope about this formatting :trolley:
 } from "../config.json";
 import tokens from "../tokens.json";
 import { PubSubClient } from "@twurple/pubsub";
 
 const obs = new OBSWebSocket();
+
+let cachedId: number;
+let cachedScene: string;
 
 async function start() {
     console.log("Starting..")
@@ -24,7 +28,10 @@ async function start() {
     }
 
     process.on("SIGINT", () => stop());
-    obs.once('ExitStarted', () => stop());
+    obs.once('ExitStarted', async () => {
+        await hideNested();
+        stop();
+    });
     obs.once('Identified', () => console.log("Connected to OBS"));
     obs.once('ConnectionError', (err) => {
         console.log("Connection to OBS failed", err);
@@ -33,6 +40,9 @@ async function start() {
     obs.once('ConnectionClosed', () => {
         console.log("Connection to OBS lost");
         stop();
+    });
+    obs.once('StreamStateChanged', async (ss) => {
+        if (!ss.outputActive) await hideNested();
     });
 
     const authProvider = new RefreshingAuthProvider(
@@ -93,9 +103,30 @@ async function start() {
 async function switchScenes() {
     await delay(2000)
     console.log("Switching scenes")
-    let currentScene = await obs.call("GetCurrentProgramScene");
-    if (currentScene.currentProgramSceneName === obsSceneName) return;
+    let currentScene = (await obs.call("GetCurrentProgramScene")).currentProgramSceneName;
+    cachedScene = currentScene;
+    if (nested) {
+        try {
+            let id = await obs.call("GetSceneItemId", { sceneName: currentScene, sourceName: obsSceneName })
+            cachedId = id.sceneItemId;
+            await obs.call("SetSceneItemEnabled", { sceneName: currentScene, sceneItemId: id.sceneItemId, sceneItemEnabled: true })
+        } catch {
+            // ignore
+        }
+        return
+    }
+    if (currentScene === obsSceneName) return;
     await obs.call("SetCurrentProgramScene", { sceneName: obsSceneName })
+}
+
+async function hideNested() {
+    if (nested) {
+        try {
+            await obs.call("SetSceneItemEnabled", { sceneName: cachedScene, sceneItemId: cachedId, sceneItemEnabled: false })
+        } catch {
+            // ignore
+        }
+    }
 }
 
 function delay(time) {
